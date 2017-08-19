@@ -64,7 +64,7 @@ public class ASTEntityBuilder {//don't serialize AST information
 			throw new RuntimeException("No top-level class declarations in single document");
 		if(documentRootEntity.getChildren().size()>1)
 			throw new RuntimeException("Multiple top-level class declarations in single document");
-		rootEntity = documentRootEntity.getChildren().get(0);
+		rootEntity = (ASTEntity) documentRootEntity.getChildren().get(0);
 		documentRootEntity.removeChild(rootEntity);
 	}
 	
@@ -156,7 +156,7 @@ public class ASTEntityBuilder {//don't serialize AST information
 						String name = paramComment.substring(0, firstSpace).trim();
 						String comment = code.classes.CleanComments.clean(paramComment.substring(firstSpace).trim());
 						if(!comment.isEmpty()) {
-							for(ASTEntity child : parent.getChildren()) {
+							for(Node child : parent.getChildren()) {
 								if(child.getName().equals(name)) {
 									child.updateComments(child.getComments()+comment);
 									comment = "";
@@ -223,7 +223,7 @@ public class ASTEntityBuilder {//don't serialize AST information
 
 	public String getAllComments() {
 		StringBuilder comments = new StringBuilder();
-		for(ASTEntity entity : extractStructure().collapse())
+		for(Node entity : extractStructure().collapse())
 			comments.append(entity.getComments()).append("\n");
 		return comments.toString();
 	}

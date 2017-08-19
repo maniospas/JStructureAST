@@ -27,10 +27,10 @@ public class ASTProject {
 		allMethodsIds.clear();
 		allMethods.clear();
 		for(ASTEntity projectClass : projectClasses.values()) {
-			for(ASTEntity method : projectClass.collapse()) 
-			if(method.isMethod()){
-				allMethodsIds.put(method, allMethods.size());
-				allMethods.add(method);
+			for(Node method : projectClass.collapse()) 
+			if(((ASTEntity)method).isMethod()){
+				allMethodsIds.put((ASTEntity)method, allMethods.size());
+				allMethods.add((ASTEntity)method);
 			}
 		}
 	}
@@ -60,7 +60,7 @@ public class ASTProject {
 		HashMap<String, ASTEntity> variableClasses = new HashMap<String, ASTEntity>();
 		
 		//identify variable declaration statements
-		for(String classDeclarationStatement : getTopLevelStatements(method.getParent().getImplementation(), method.getParent().getImplementation().indexOf('{')+1)) {
+		for(String classDeclarationStatement : getTopLevelStatements(((ASTEntity)method.getParent()).getImplementation(), ((ASTEntity)method.getParent()).getImplementation().indexOf('{')+1)) {
 			if(classDeclarationStatement.indexOf("=")!=-1)
 				classDeclarationStatement = classDeclarationStatement.substring(0, classDeclarationStatement.indexOf("="));
 			if(!classDeclarationStatement.contains("(")) {
@@ -77,7 +77,7 @@ public class ASTProject {
 
 		ArrayList<ASTEntity> ret = new ArrayList<ASTEntity>();
 		for(String statement : splitToStatements(method.getImplementation().trim(), 1))
-			for(ASTEntity statementCall : getStatementCalls(statement, variableClasses, method.getParent(), method.getParent()))
+			for(ASTEntity statementCall : getStatementCalls(statement, variableClasses, (ASTEntity)method.getParent(), (ASTEntity)method.getParent()))
 				if(!ret.contains(statementCall))
 					ret.add(statementCall);
 		return ret;
@@ -243,9 +243,9 @@ public class ASTProject {
 			parentEntity = projectClasses.get(className);
 			ASTEntity foundConstructor = null;
 			if(parentEntity!=null)
-				for(ASTEntity entity : parentEntity.getChildren())
+				for(Node entity : parentEntity.getChildren())
 					if(entity.getName().equals(className) && entity.getChildren().size()==nArgs)
-						foundConstructor = entity;
+						foundConstructor = (ASTEntity)entity;
 			if(foundConstructor!=null)
 				ret.add(foundConstructor);
 		}
@@ -338,9 +338,9 @@ public class ASTProject {
 				String methodName = callText.substring(0, idx).trim();
 				ASTEntity foundMethod = null;
 				if(parentEntity!=null)
-					for(ASTEntity entity : parentEntity.getChildren())
+					for(Node entity : parentEntity.getChildren())
 						if(entity.getName().equals(methodName) && entity.getChildren().size()==nArgs)
-							foundMethod = entity;
+							foundMethod = (ASTEntity)entity;
 				for(int i=0;i<nArgs;i++) {
 					pos = topLevelIndexOf(callText, ',', idx+1);
 					if(pos==-1)
@@ -383,8 +383,8 @@ public class ASTProject {
 	}
 	
 	public void addClassObject(ClassObject classObject) {
-		for(ASTEntity entity : classObject.getRoot().collapse())
-			if(entity.isClass())
-				projectClasses.put(entity.getStackTrace(), entity);
+		for(Node entity : classObject.getRoot().collapse())
+			if(((ASTEntity)entity).isClass())
+				projectClasses.put(entity.getStackTrace(), (ASTEntity)entity);
 	}
 }

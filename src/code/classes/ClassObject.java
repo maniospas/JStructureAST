@@ -121,9 +121,9 @@ public class ClassObject implements Serializable {
 	
 
 	public ASTEntity searchForSimilar(ASTEntity entity) {
-		for(ASTEntity child : getRoot().collapse()) {
+		for(Node child : getRoot().collapse()) {
 			if(child.getName().equals(entity.getName()) && child.getLevel()==entity.getLevel())
-				return child;
+				return (ASTEntity)child;
 		}
 		throw new RuntimeException("Could not find similar entity");
 		//return null;

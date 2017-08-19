@@ -1,7 +1,5 @@
 package code.classes;
 
-import java.util.ArrayList;
-
 /**
  * <h1>ASTEntity</h1>
  * This class is used to represent an AST node of high-level code structures that is abstracted to a name,
@@ -9,14 +7,12 @@ import java.util.ArrayList;
  * function arguments should not have a name).
  * @author Manios Krasanakis
  */
-public class ASTEntity {
+public class ASTEntity extends Node {
 	private String type;
 	private String name;
 	private String comments;
 	private String implementation;
 	private int positionalId;
-	private ASTEntity parent;
-	private ArrayList<ASTEntity> children = new ArrayList<ASTEntity>();
 
 	/**
 	 * A constructor that assigns the desired parameters for the AST node.
@@ -50,31 +46,6 @@ public class ASTEntity {
 		return positionalId;
 	}
 	/**
-	 * <h1>addChild</h1>
-	 * Adds a child to the AST node. Also sets the child's parent node.
-	 * @param child
-	 */
-	public void addChild(ASTEntity child) {
-		if(child.parent!=null)
-			throw new RuntimeException("Child already assigned to parent");
-		if(child==this)
-			throw new RuntimeException("Cannot make self a child");
-		child.parent = this;
-		children.add(child);
-		child.updateComments(child.getComments());
-	}
-	/**
-	 * <h1>removeChild</h1>
-	 * Removes a child from the AST node. Also removes the child's parent node.
-	 * @param child
-	 */
-	public void removeChild(ASTEntity child) {
-		if(child.parent!=this)
-			throw new RuntimeException("Child assigned to different parent");
-		child.parent = null;
-		children.remove(child);
-	}
-	/**
 	 * <h1>getName</h1>
 	 * @return the node's name
 	 */
@@ -101,67 +72,6 @@ public class ASTEntity {
 	 */
 	public void updateComments(String newComments) {
 		comments = code.classes.CleanComments.removeParams(newComments);
-	}
-	/**
-	 * <h1>getChildren</h1>
-	 * @return a list of the node's child nodes (i.e. methods of function or arguments of methods)
-	 */
-	public ArrayList<ASTEntity> getChildren() {
-		return children;
-	}
-	/**
-	 * <h1>getParent</h1>
-	 * @return the parent node
-	 */
-	public ASTEntity getParent() {
-		return parent;
-	}
-	/**
-	 * <h1>collapse</h1>
-	 * Implementation is iterative.
-	 * @return a list containing this entity and its children.
-	 */
-	final public ArrayList<ASTEntity> collapse() {
-		ArrayList<ASTEntity> list = new ArrayList<ASTEntity>();
-		list.add(this);
-		for(ASTEntity child : children) {
-			list.addAll(child.collapse());
-		}
-		return list;
-	}
-	private int level = -1;
-	/**
-	 * <h1>getLevel</h1> 
-	 * @return the number of parents until the top parent is reached
-	 */
-	public final int getLevel() {
-		if(level==-1) {
-			if(parent!=null)
-				level = parent.getLevel()+1;
-			else
-				level = 0;
-		}
-		return level;
-	}
-	public boolean isComparable(ASTEntity to) {
-		return getLevel()==to.getLevel();
-	}
-	/**
-	 * <h1>getStrackTrace</h1>
-	 * Implementation is iterative.
-	 * @return a unique representation of this entity's position within its parents.
-	 */
-	public String getStackTrace() {
-		String args = "";
-		if(isMethod()) {
-			for(ASTEntity child : children) {
-				if(!args.isEmpty())
-					args += ", ";
-				args += child.type;
-			}
-			args = "("+args+")";
-		}
-		return (parent!=null?parent.getStackTrace()+".":"")+getName()+args;
 	}
 	public String getTypedStackTrace() {
 		String ret = "";
@@ -191,13 +101,30 @@ public class ASTEntity {
 		ret.positionalId = positionalId;
 		ret.implementation = implementation;
 		try{
-			for(ASTEntity child : children)
+			for(Node child : children)
 				ret.addChild(child.copyWithoutComments());
 		}
 		catch(Exception e){ 
 			e.printStackTrace();
 		}
 		return ret;
+	}
+	/**
+	 * <h1>getStrackTrace</h1>
+	 * Implementation is iterative.
+	 * @return a unique representation of this entity's position within its parents.
+	 */
+	public String getStackTrace() {
+		String args = "";
+		if(isMethod()) {
+			for(Node child : children) {
+				if(!args.isEmpty())
+					args += ", ";
+				args += child.getType();
+			}
+			args = "("+args+")";
+		}
+		return (parent!=null?parent.getStackTrace()+".":"")+getName()+args;
 	}
 	/**
 	 * <h1>isArgument</h1>
@@ -218,7 +145,7 @@ public class ASTEntity {
 	 * @return whether the node is a method
 	 */
 	public boolean isMethod() {
-		return parent!=null && parent.isClass() && !isClass(); //TODO check if neither argument nor class instead
+		return getParent()!=null && parent.getType().isEmpty() && !isClass(); //TODO check if neither argument nor class instead
 	}
 	@Override
 	public String toString() {
