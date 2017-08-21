@@ -36,7 +36,6 @@ public class ClassObject implements Serializable {
 		contribution = (new File(path)).getName();
 		content = contentBuilder.toString();
 	}
-	
 	/**
 	 * Constructor that creates a custom class with specified contribution source and content.
 	 * @param contribution
@@ -46,7 +45,6 @@ public class ClassObject implements Serializable {
 		this.contribution = contribution;
 		this.content = content;
 	}
-	
 	/**
 	 * <h1>copy</h1>
 	 * @return a copy of this class
@@ -54,7 +52,6 @@ public class ClassObject implements Serializable {
 	public ClassObject copy() {
 		return new ClassObject(contribution, content);
 	}
-	
 	/**
 	 * <h1>getContribution</h1>
 	 * @return the contributing source
@@ -62,7 +59,6 @@ public class ClassObject implements Serializable {
 	public String getContribution() {
 		return contribution;
 	}
-	
 	/**
 	 * <h1>getContent</h1>
 	 * @return the raw textual content
@@ -70,7 +66,6 @@ public class ClassObject implements Serializable {
 	public String getContent() {
 		return content;
 	}
-	
 	/**
 	 * <h1>toString</h1>
 	 * @return the name of the root entity
@@ -82,7 +77,6 @@ public class ClassObject implements Serializable {
 			return "";
 		return root.getName();
 	}
-	
 	/**
 	 * <h1>getRoot</h1>
 	 * Uses {@link ASTEntityBuilder} to generate AST structure.
@@ -101,7 +95,6 @@ public class ClassObject implements Serializable {
 		}
 		return rootEntity;
 	}
-	
 	/**
 	 * <h1>setContent</h1>
 	 * @param content the new content
@@ -110,7 +103,6 @@ public class ClassObject implements Serializable {
 		this.content = content;
 		rootEntity = null;
 	}
-
 	/**
 	 * <h1>createASTBuilderFactory</h1>
 	 * @return an ASTBuilderFactory, which can be used to modify source code or directly obtain low-level components of source syntax
@@ -119,7 +111,6 @@ public class ClassObject implements Serializable {
 		return new ASTEntityBuilder(this);
 	}
 	
-
 	public ASTEntity searchForSimilar(ASTEntity entity) {
 		for(Node child : getRoot().collapse()) {
 			if(child.getName().equals(entity.getName()) && child.getLevel()==entity.getLevel())

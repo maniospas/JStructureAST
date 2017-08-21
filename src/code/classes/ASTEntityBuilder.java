@@ -18,6 +18,13 @@ import org.eclipse.jdt.core.dom.StructuralPropertyDescriptor;
 import org.eclipse.jdt.core.dom.TagElement;
 import org.eclipse.jdt.core.dom.TextElement;
 
+/**
+ * <h1>ASTEntityBuilder</h1>
+ * This class is used to generate and manage the comments a tree of {@link ASTEntity} nodes related to the source code
+ * of a {@link ClassObject}. Changes to node comments are able to be passed back as changes to the source code.
+ * 
+ * @author Manios Krasanakis
+ */
 public class ASTEntityBuilder {//don't serialize AST information
 	
 	private ASTEntity rootEntity = null;
@@ -29,6 +36,11 @@ public class ASTEntityBuilder {//don't serialize AST information
 		targetObject = object;
 	}
 	
+	/**
+	 * <h1>getNodeChildren</h1>
+	 * @param node a given Java ASTNode node
+	 * @return a list of the given Java ASTNode's children
+	 */
 	@SuppressWarnings("unchecked")
 	private static ArrayList<ASTNode> getNodeChildren(ASTNode node) {
 		ArrayList<ASTNode> flist = new ArrayList<ASTNode>();
@@ -78,7 +90,13 @@ public class ASTEntityBuilder {//don't serialize AST information
 			}
 		}
 	}
-	
+	/**
+	 * <h1>generateEntityForNode</h1>
+	 * @param parent the generated entity's parent
+	 * @param node the given node
+	 * @return an {@link ASTEntity} with the designated parent which includes information about 
+	 * structural children of the given ASTNode
+	 */
 	protected ASTEntity generateEntityForNode(ASTEntity parent, ASTNode node) {
 		ASTEntity entity = null;
 		if(node instanceof AbstractTypeDeclaration) {
@@ -186,11 +204,27 @@ public class ASTEntityBuilder {//don't serialize AST information
 		return rootEntity.toString();
 	}
 	
+	/**
+	 * <h1>extractStructure</h1>
+	 * @return the generated root {@link ASTEntity} of the AST structure managed by the {@link ASTEntityBuilder} instance.
+	 */
 	public ASTEntity extractStructure() {
 		generateAST();
 		return rootEntity;
 	}
 
+	/**
+	 * <h1>appendComments</h1>
+	 * Appends given comments to a given entity's source code (the entity retain its own stored comments, since this
+	 * only affects the source code). To remove overhead, due to multiple edits,
+	 * appended comment changes are then reflected on the source code only after 
+	 * {@link #applyCommentAppends} is called.
+	 * @param target the target {@link ASTEntity} (if this entity is not managed by the {@link ASTEntityBuilder} instance,
+	 * 	then the builder is searched for a suitable node to append to)
+	 * @param comments the comments to be appended to entity's source
+	 * @throws Exception if the builder does contains neither the target entity nor a similar one
+	 * @see #applyCommentAppends()
+	 */
 	@SuppressWarnings("unchecked")
 	public void appendComments(ASTEntity target, String comments) throws Exception {
 		if(node==null)
@@ -215,12 +249,21 @@ public class ASTEntityBuilder {//don't serialize AST information
 		//
 		((BodyDeclaration) entityNode).setJavadoc(docComment);
 	}
-	
+	/**
+	 * <h1>applyCommentAppends</h1>
+	 * Changes the source code of the {@link ClassObject} managed by the {@link ASTEntityBuilder} instance
+	 * to reflect comment changes suggested by {@link #appendComments}.<br/>
+	 * <b>Calling this method does not affect comments stored in {@link ASTEntity} instances.</b>
+	 * @see #appendComments(ASTEntity, String)
+	 */
 	public void applyCommentAppends() {
 		targetObject.setContent(node.toString());
 		//generateAST();
 	}
-
+	/**
+	 * <h1>getAllComments</h1>
+	 * @return builds a text containing all comments related to the source code
+	 */
 	public String getAllComments() {
 		StringBuilder comments = new StringBuilder();
 		for(Node entity : extractStructure().collapse())

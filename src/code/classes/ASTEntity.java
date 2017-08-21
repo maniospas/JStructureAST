@@ -2,8 +2,8 @@ package code.classes;
 
 /**
  * <h1>ASTEntity</h1>
- * This class is used to represent an AST node of high-level code structures that is abstracted to a name,
- * its type, its comments and its implementation (classes would not have a type, while
+ * This class is used to represent an AST node of high-level code structures (i.e. classes, methods, arguments)
+ * that is abstracted to a name, its type, its comments and its implementation (classes would not have a type, while
  * function arguments should not have a name).
  * @author Manios Krasanakis
  */

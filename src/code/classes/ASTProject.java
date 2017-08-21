@@ -8,9 +8,7 @@ import java.util.HashMap;
  * <h1>ASTProject</h1>
  * This class is used to manage projects using {@link ASTEntity}.
  * It contains functionality which allows scanning {@link ASTEntity#getImplementation()} for usage of {@link ASTEntity} instances
- * loaded. Code needs to be bug-free libraries and files are allowed to missing.
- * <br/>
- * <i>Warning: employed heuristics may fail to identify variable types which employ multiple heuristics</i>
+ * loaded. Code needs to be bug-free but files are allowed to missing.
  * @author Manios Kranasakis
  */
 public class ASTProject {
@@ -22,7 +20,13 @@ public class ASTProject {
 		importPath(projectPath);
 		updateProject();
 	}
-	
+	/**
+	 * <h1>updateProject</h1>
+	 * Updates the given project metadata, such as available methdods, after adding new classes.
+	 * @see #addClassObject(ClassObject)
+	 * @see #importFile(String)
+	 * @see #importPath(String)
+	 */
 	public void updateProject() {
 		allMethodsIds.clear();
 		allMethods.clear();
@@ -42,7 +46,11 @@ public class ASTProject {
 		}
 		return null;
 	}
-	
+	/**
+	 * <h1>generateTraversalMatrix</h1>
+	 * Uses {@link #getCalledMethodsBy} to generate a traversal matrix between all methods in the project.
+	 * @return a traversal matrix between all methods in the project
+	 */
 	public double[][] generateTraversalMatrix() {
 		int N = allMethods.size(); 
 		double[][] M = new double[N][N];
@@ -55,137 +63,59 @@ public class ASTProject {
 		}
 		return M;
 	}
-	
+	public ASTEntity getMethodByIndexInTraversalMatrix(int i) {
+		return allMethods.get(i);
+	}
+	public int getIndexInTraversalMatrix(ASTEntity method) {
+		return allMethodsIds.get(method);
+	}
+	/**
+	 * <h1>getCalledMethodsBy</h1>
+	 * Identifies class fields as variables before calling {@link #getStatementCalls} for each statement in the method's
+	 * implementation.
+	 * @param method a given method
+	 * @return a list of {@link ASTEntity} instances in the project used by the designated method
+	 */
 	public ArrayList<ASTEntity> getCalledMethodsBy(ASTEntity method) {
 		HashMap<String, ASTEntity> variableClasses = new HashMap<String, ASTEntity>();
 		
 		//identify variable declaration statements
-		for(String classDeclarationStatement : getTopLevelStatements(((ASTEntity)method.getParent()).getImplementation(), ((ASTEntity)method.getParent()).getImplementation().indexOf('{')+1)) {
+		for(String classDeclarationStatement : CodeManipulation.getTopLevelStatements(((ASTEntity)method.getParent()).getImplementation(), ((ASTEntity)method.getParent()).getImplementation().indexOf('{')+1)) {
 			if(classDeclarationStatement.indexOf("=")!=-1)
 				classDeclarationStatement = classDeclarationStatement.substring(0, classDeclarationStatement.indexOf("="));
 			if(!classDeclarationStatement.contains("(")) {
-				String[] words = classDeclarationStatement.split("(\\s|\\<|\\>|\\,)+");//TODO search for known variable types in the words instead
-				if(words.length>=2) {
-					String variableName = words[words.length-1];
-					String variableType = words[words.length-2];
-					//handle hashmaps, lists, etc
-					if(projectClasses.get(variableType)!=null) 
-						variableClasses.put(variableName, projectClasses.get(variableType));
+				String[] variableType = classDeclarationStatement.split("(\\s|\\<|\\>|\\,)+");
+				if(variableType.length>=2) {
+					String variableName = variableType[variableType.length-1];
+					//handle hashmaps, lists, etc by selecting the first known variable reference
+					for(int i=0;i<variableType.length-1;i++) {
+						if(projectClasses.get(variableType[i])!=null) {
+							variableClasses.put(variableName, projectClasses.get(variableType[i]));
+							break;
+						}
+					}
 				}
 			}
 		}
 
 		ArrayList<ASTEntity> ret = new ArrayList<ASTEntity>();
-		for(String statement : splitToStatements(method.getImplementation().trim(), 1))
+		for(String statement : CodeManipulation.splitToStatements(method.getImplementation().trim(), 1))
 			for(ASTEntity statementCall : getStatementCalls(statement, variableClasses, (ASTEntity)method.getParent(), (ASTEntity)method.getParent()))
 				if(!ret.contains(statementCall))
 					ret.add(statementCall);
 		return ret;
 	}
-	
-
-	private static int topLevelIndexOf(String text, String str, int startingPosition) {
-		char first = str.charAt(0);
-		int pos = startingPosition-1;
-		while(pos<text.length()) {
-			pos = topLevelIndexOf(text, first, pos+1);
-			if(pos==-1)
-				break;
-			boolean found = true;
-			for(int i=0;i<str.length() && found;i++)
-				if(pos+i>=text.length())
-					found = false;
-				else if(str.charAt(i)!=text.charAt(pos+i))
-					found = false;
-			if(found)
-				return pos;
-		}
-		return -1;
-	}
-	
-	private static int topLevelIndexOf(String text, char c, int pos) {
-		int level = 0;
-		for(int i=pos;i<text.length();i++) {
-			if(text.charAt(i)==c && level==0)
-				return i;
-			if(text.charAt(i)=='(')
-				level++;
-			else if(text.charAt(i)==')')
-				level--;
-			if(text.charAt(i)==c && level==0)
-				return i;
-			if(level<0)
-				break;
-		}
-		return -1;
-	}
-	
-	private static ArrayList<String> getTopLevelStatements(String text, int pos) {
-		ArrayList<String> statements = new ArrayList<String>();
-		String currentStatement = "";
-		int level = 0;
-		for(int i=pos;i<text.length();i++) {
-			char c = text.charAt(i);
-			if(c=='{')
-				level++;
-			else if(c=='}')
-				level--;
-			else if(c=='\n')
-				continue;
-			else if(c==';' && level==0) {
-				statements.add(currentStatement.trim());
-				currentStatement = "";
-			}
-			else if(level==0)
-				currentStatement += c;
-			if(level<0)
-				break;
-		}
-		currentStatement = currentStatement.trim();
-		if(!currentStatement.isEmpty())
-			statements.add(currentStatement);
-		return statements;
-	}
-	
-	private static ArrayList<String> splitToStatements(String text, int pos) {
-		ArrayList<String> statements = new ArrayList<String>();
-		String currentStatement = "";
-		int level = 0;
-		for(int i=pos;i<text.length();i++) {
-			char c = text.charAt(i);
-			if(c=='\n')
-				continue;
-			else if(c=='{' || c=='}' || c==';') {
-				statements.add(currentStatement.trim());
-				currentStatement = "";
-			}
-			else
-				currentStatement += c;
-			if(level<0)
-				break;
-		}
-		currentStatement = currentStatement.trim();
-		if(!currentStatement.isEmpty())
-			statements.add(currentStatement);
-		return statements;
-	}
-	
-	private static int topLevelCountOf(String text, char c, int pos) {
-		int level = 0;
-		int count = 0;
-		for(int i=pos;i<text.length();i++) {
-			if(text.charAt(i)=='(')
-				level++;
-			else if(text.charAt(i)==')')
-				level--;
-			else if(text.charAt(i)==c && level==0)
-				count++;
-			if(level<0)
-				break;
-		}
-		return count;
-	}
-	
+	/**
+	 * <h1>getStatementCalls</h1>
+	 * Identifies variable types, which are then added to the given map of variable classes. 
+	 * Calls {@link #recognizeKnownEntity} to identify method calls, as well as method and operator arguments.
+	 * @param statement the given statement
+	 * @param variableClasses a map that maps variables to their closest {@link ASTEntity} defined in the project
+	 * @param parentEntity
+	 * @param defaultParentEntity
+	 * @return a list of identified {@link ASTEntity} instances from the project used by the given statement
+	 * @see #recognizeKnownEntity(String, ASTEntity, HashMap, ASTEntity)
+	 */
 	private ArrayList<ASTEntity> getStatementCalls(String statement, HashMap<String, ASTEntity> variableClasses, ASTEntity parentEntity, ASTEntity defaultParentEntity) {
 		statement = statement.trim();
 		ArrayList<ASTEntity> calls = new ArrayList<ASTEntity>();
@@ -193,7 +123,13 @@ public class ASTProject {
 		
 		int pos = 0;
 		while(pos<statement.length()) {
-			int idxEquals = topLevelIndexOf(statement, '=', pos);
+			int idxEquals = CodeManipulation.topLevelIndexOf(statement, '=', pos);
+			if(idxEquals==-1) {
+				idxEquals = CodeManipulation.topLevelIndexOf(statement, ':', pos);
+				int posQ = CodeManipulation.topLevelIndexOf(statement, '?', pos);
+				if(posQ!=-1 && posQ<idxEquals)
+					idxEquals = -1;
+			}
 			if(idxEquals!=-1 && statement.charAt(idxEquals-1)=='!')
 				idxEquals = -1;
 			if(idxEquals!=-1 && idxEquals<statement.length()-1 && statement.charAt(idxEquals+1)=='=')
@@ -203,11 +139,24 @@ public class ASTProject {
 				ArrayList<ASTEntity> RHSCalls = getStatementCalls(statement.substring(idxEquals+1), variableClasses, parentEntity, defaultParentEntity);
 				calls.addAll(getStatementCalls(LHStext, variableClasses, parentEntity, defaultParentEntity));
 				calls.addAll(RHSCalls);
+				String variableName = LHStext.substring(LHStext.lastIndexOf(' ')+1);
 				if(RHSCalls.size()>=1)  {
-					String variableName = LHStext.substring(LHStext.lastIndexOf(' ')+1);
 					String variableType = RHSCalls.get(RHSCalls.size()-1).getType();
 					if(projectClasses.get(variableType)!=null)
 						variableClasses.put(variableName, projectClasses.get(variableType));
+				}
+				if(variableClasses.get(variableName)==null) {
+					String[] variableType = LHStext.split("(\\s|\\<|\\>|\\,)+");
+					if(variableType.length>=2) {
+						variableName = variableType[variableType.length-1];
+						//handle hashmaps, lists, etc by selecting the first known variable reference
+						for(int i=0;i<variableType.length-1;i++) {
+							if(projectClasses.get(variableType[i])!=null) {
+								variableClasses.put(variableName, projectClasses.get(variableType[i]));
+								break;
+							}
+						}
+					}	
 				}
 				pos = idxEquals+1;
 			}
@@ -223,21 +172,30 @@ public class ASTProject {
 		
 		return calls;
 	}
-	
+	/**
+	 * <h1>recognizeKnownEntity</h1>
+	 * Identified method calls, as well as method and operator arguments. In turn calls {@link #getStatementCalls} to handle sub-structures,
+	 * such as arguments.
+	 * @param callText
+	 * @param parentEntity
+	 * @param variableClasses
+	 * @param defaultParentEntity
+	 * @return a list of identified {@link ASTEntity} instances from the project used by the given statement
+	 * @see #getStatementCalls(String, HashMap, ASTEntity, ASTEntity)
+	 */
 	private ArrayList<ASTEntity> recognizeKnownEntity(String callText, ASTEntity parentEntity,  HashMap<String, ASTEntity> variableClasses, ASTEntity defaultParentEntity) {
 		ArrayList<ASTEntity> ret = new ArrayList<ASTEntity>();
 		callText = callText.trim();
 		//while(callText.startsWith("(") && callText.endsWith(")")) 
 			//callText = callText.substring(1, callText.length()-1).trim();
-		//System.out.println("--->"+callText);
 		if(!callText.contains(")")) {//static class references
 			if(projectClasses.get(callText)!=null)
 				ret.add(projectClasses.get(callText));
 		}
 		else if(callText.startsWith("new ")) {//constructors
 			int idx = callText.indexOf("(");
-			int nArgs = topLevelCountOf(callText, ',', idx+1)+1;
-			if(callText.substring(idx+1, topLevelIndexOf(callText,')', idx)).trim().isEmpty())
+			int nArgs = CodeManipulation.topLevelCountOf(callText, ',', idx+1)+1;
+			if(callText.substring(idx+1, CodeManipulation.topLevelIndexOf(callText,')', idx)).trim().isEmpty())
 				nArgs = 0;
 			String className = callText.substring(4, idx).trim();
 			parentEntity = projectClasses.get(className);
@@ -250,67 +208,103 @@ public class ASTProject {
 				ret.add(foundConstructor);
 		}
 		else {
-			int idx = topLevelIndexOf(callText, '(', 0);
+			int idx = CodeManipulation.topLevelIndexOf(callText, '(', 0);
 			if(idx==-1)
 				idx = callText.length()-1;
-			int idxEnd = topLevelIndexOf(callText, ')', idx);
+			int idxEnd = CodeManipulation.topLevelIndexOf(callText, ')', idx);
 			int pos;
-			if((pos = topLevelIndexOf(callText, "&&", 0))!=-1) {
-				if(topLevelIndexOf(callText, "&&", 0)<callText.length()-1) {
-					ret.addAll(getStatementCalls(callText.substring(0, pos), variableClasses, defaultParentEntity, defaultParentEntity));
-					ret.addAll(getStatementCalls(callText.substring(pos+2), variableClasses, defaultParentEntity, defaultParentEntity));
-				}
-			}
-			else if((pos = topLevelIndexOf(callText, "||", 0))!=-1) {
+			if((pos = CodeManipulation.topLevelIndexOf(callText, "->", 0))!=-1) {
 				if(pos<callText.length()-1) {
 					ret.addAll(getStatementCalls(callText.substring(0, pos), variableClasses, defaultParentEntity, defaultParentEntity));
 					ret.addAll(getStatementCalls(callText.substring(pos+2), variableClasses, defaultParentEntity, defaultParentEntity));
 				}
 			}
-			else if((pos = topLevelIndexOf(callText, "==", 0))!=-1) {
+			else if((pos = CodeManipulation.topLevelIndexOf(callText, ':', 0))!=-1) {
+				if(pos<callText.length()-1) {
+					ret.addAll(getStatementCalls(callText.substring(0, pos), variableClasses, defaultParentEntity, defaultParentEntity));
+					ret.addAll(getStatementCalls(callText.substring(pos+1), variableClasses, defaultParentEntity, defaultParentEntity));
+				}
+			}
+			else if((pos = CodeManipulation.topLevelIndexOf(callText, '?', 0))!=-1) {
+				if(pos<callText.length()-1) {
+					ret.addAll(getStatementCalls(callText.substring(0, pos), variableClasses, defaultParentEntity, defaultParentEntity));
+					ret.addAll(getStatementCalls(callText.substring(pos+1), variableClasses, defaultParentEntity, defaultParentEntity));
+				}
+			}
+			else if((pos = CodeManipulation.topLevelIndexOf(callText, "==", 0))!=-1) {
 				if(pos<callText.length()-1) {
 					ret.addAll(getStatementCalls(callText.substring(0, pos), variableClasses, defaultParentEntity, defaultParentEntity));
 					ret.addAll(getStatementCalls(callText.substring(pos+2), variableClasses, defaultParentEntity, defaultParentEntity));
 				}
 			}
-			else if((pos = topLevelIndexOf(callText, "!=", 0))!=-1) {
+			else if((pos = CodeManipulation.topLevelIndexOf(callText, '<', 0))!=-1) {
+				if(pos<callText.length()-1) {
+					ret.addAll(getStatementCalls(callText.substring(0, pos), variableClasses, defaultParentEntity, defaultParentEntity));
+					ret.addAll(getStatementCalls(callText.substring(pos+1), variableClasses, defaultParentEntity, defaultParentEntity));
+				}
+			}
+			else if((pos = CodeManipulation.topLevelIndexOf(callText, '>', 0))!=-1) {
+				if(pos<callText.length()-1) {
+					ret.addAll(getStatementCalls(callText.substring(0, pos), variableClasses, defaultParentEntity, defaultParentEntity));
+					ret.addAll(getStatementCalls(callText.substring(pos+1), variableClasses, defaultParentEntity, defaultParentEntity));
+				}
+			}
+			else if((pos = CodeManipulation.topLevelIndexOf(callText, "&&", 0))!=-1) {
 				if(pos<callText.length()-1) {
 					ret.addAll(getStatementCalls(callText.substring(0, pos), variableClasses, defaultParentEntity, defaultParentEntity));
 					ret.addAll(getStatementCalls(callText.substring(pos+2), variableClasses, defaultParentEntity, defaultParentEntity));
 				}
 			}
-			else if((pos = topLevelIndexOf(callText, '+', 0))!=-1) {
+			else if((pos = CodeManipulation.topLevelIndexOf(callText, "||", 0))!=-1) {
+				if(pos<callText.length()-1) {
+					ret.addAll(getStatementCalls(callText.substring(0, pos), variableClasses, defaultParentEntity, defaultParentEntity));
+					ret.addAll(getStatementCalls(callText.substring(pos+2), variableClasses, defaultParentEntity, defaultParentEntity));
+				}
+			}
+			else if((pos = CodeManipulation.topLevelIndexOf(callText, "!=", 0))!=-1) {
+				if(pos<callText.length()-1) {
+					ret.addAll(getStatementCalls(callText.substring(0, pos), variableClasses, defaultParentEntity, defaultParentEntity));
+					ret.addAll(getStatementCalls(callText.substring(pos+2), variableClasses, defaultParentEntity, defaultParentEntity));
+				}
+			}
+			else if((pos = CodeManipulation.topLevelIndexOf(callText, '+', 0))!=-1) {
 				if(pos<callText.length()-1) {
 					ret.addAll(getStatementCalls(callText.substring(0, pos), variableClasses, defaultParentEntity, defaultParentEntity));
 					ret.addAll(getStatementCalls(callText.substring(pos+1), variableClasses, defaultParentEntity, defaultParentEntity));
 				}
 			}
-			else if((pos = topLevelIndexOf(callText, '-', 0))!=-1) {
+			else if((pos = CodeManipulation.topLevelIndexOf(callText, '-', 0))!=-1) {
 				if(pos<callText.length()-1) {
 					ret.addAll(getStatementCalls(callText.substring(0, pos), variableClasses, defaultParentEntity, defaultParentEntity));
 					ret.addAll(getStatementCalls(callText.substring(pos+1), variableClasses, defaultParentEntity, defaultParentEntity));
 				}
 			}
-			else if((pos = topLevelIndexOf(callText, '*', 0))!=-1) {
+			else if((pos = CodeManipulation.topLevelIndexOf(callText, '*', 0))!=-1) {
 				if(pos<callText.length()-1) {
 					ret.addAll(getStatementCalls(callText.substring(0, pos), variableClasses, defaultParentEntity, defaultParentEntity));
 					ret.addAll(getStatementCalls(callText.substring(pos+1), variableClasses, defaultParentEntity, defaultParentEntity));
 				}
 			}
-			else if((pos = topLevelIndexOf(callText, '/', 0))!=-1) {
+			else if((pos = CodeManipulation.topLevelIndexOf(callText, '/', 0))!=-1) {
 				if(pos<callText.length()-1) {
 					ret.addAll(getStatementCalls(callText.substring(0, pos), variableClasses, defaultParentEntity, defaultParentEntity));
 					ret.addAll(getStatementCalls(callText.substring(pos+1), variableClasses, defaultParentEntity, defaultParentEntity));
 				}
 			}
-			else if(idxEnd!=callText.length()-1 && topLevelIndexOf(callText, ' ', 0)!=-1) {
+			else if((pos = CodeManipulation.topLevelIndexOf(callText, '!', 0))!=-1) {
+				if(pos<callText.length()-1) {
+					ret.addAll(getStatementCalls(callText.substring(0, pos), variableClasses, defaultParentEntity, defaultParentEntity));
+					ret.addAll(getStatementCalls(callText.substring(pos+1), variableClasses, defaultParentEntity, defaultParentEntity));
+				}
+			}
+			else if(idxEnd!=callText.length()-1 && CodeManipulation.topLevelIndexOf(callText, ' ', 0)!=-1) {
 				ret.addAll(recognizeKnownEntity(callText.substring(0, idx), defaultParentEntity, variableClasses, defaultParentEntity));
 				if(idxEnd!=-1) {
-					ret.addAll(recognizeKnownEntity(callText.substring(idx+1, idxEnd), defaultParentEntity, variableClasses, defaultParentEntity));
+					ret.addAll(getStatementCalls(callText.substring(idx+1, idxEnd), variableClasses, defaultParentEntity, defaultParentEntity));
 					ret.addAll(recognizeKnownEntity(callText.substring(idxEnd+1), defaultParentEntity, variableClasses, defaultParentEntity));
 				}
 			}
-			else if((pos = topLevelIndexOf(callText, '.', 0))!=-1) {
+			else if((pos = CodeManipulation.topLevelIndexOf(callText, '.', 0))!=-1) {
 				String entityText = callText.substring(0, pos).trim();
 				if(variableClasses.get(entityText)!=null) {
 					parentEntity = variableClasses.get(entityText);
@@ -332,7 +326,7 @@ public class ASTProject {
 				ret.addAll(recognizeKnownEntity(callText.substring(pos+1), parentEntity, variableClasses, defaultParentEntity));
 			}
 			else {
-				int nArgs = topLevelCountOf(callText, ',', idx+1)+1;
+				int nArgs = CodeManipulation.topLevelCountOf(callText, ',', idx+1)+1;
 				if(idxEnd==-1 || idx>=callText.length()-1 || callText.substring(idx+1, idxEnd).trim().isEmpty())
 					nArgs = 0;
 				String methodName = callText.substring(0, idx).trim();
@@ -342,7 +336,7 @@ public class ASTProject {
 						if(entity.getName().equals(methodName) && entity.getChildren().size()==nArgs)
 							foundMethod = (ASTEntity)entity;
 				for(int i=0;i<nArgs;i++) {
-					pos = topLevelIndexOf(callText, ',', idx+1);
+					pos = CodeManipulation.topLevelIndexOf(callText, ',', idx+1);
 					if(pos==-1)
 						pos = idxEnd;
 					ret.addAll(getStatementCalls(callText.substring(idx+1, pos), variableClasses, defaultParentEntity, defaultParentEntity));
@@ -358,22 +352,37 @@ public class ASTProject {
 	}
 	
 
+	/**
+	 * <h1>importPath</h1>
+	 * Imports all Java classes found in <code>.java</code> files under the designated directory
+	 * and its sub-directories into the project.  {@link #updateProject} must be called afterwards.
+	 * @param path a valid directory path
+	 * @see #importFile(String)
+	 * @see #updateProject()
+	 */
 	public void importPath(String path) {
 	    File directory = new File(path);
 	    File[] fList = directory.listFiles();
 	    for (File file : fList) {
 	        if (file.isFile()) {
-	            importFile(file.getPath());
+	        	if(file.getPath().endsWith(".java"))
+	        		importFile(file.getPath());
 	        } 
 	        else if (file.isDirectory()) {
 	        	importPath(file.getPath());
 	        }
 	    }
 	}
-	
+	/**
+	 * <h1>importFile</h1>
+	 * Imports a Java class from a designated file into the project.  {@link #updateProject} must be called afterwards.
+	 * @param path a file path
+	 * @see #importPath(String)
+	 * @see #addClassObject(ClassObject)
+	 * @see ClassObject#ClassObject(String)
+	 * @see #updateProject()
+	 */
 	public void importFile(String path) {
-		if(!path.endsWith(".java"))
-			return;
 		try {
 			addClassObject(new ClassObject(path));
 		}
@@ -381,7 +390,13 @@ public class ASTProject {
 			e.printStackTrace();
 		}
 	}
-	
+	/**
+	 * <h1>addClassObject</h1>
+	 * Adds a {@link ClassObject} to the project. {@link #updateProject} must be called afterwards.
+	 * @param classObject
+	 * @see #importFile(String)
+	 * @see #updateProject()
+	 */
 	public void addClassObject(ClassObject classObject) {
 		for(Node entity : classObject.getRoot().collapse())
 			if(((ASTEntity)entity).isClass())
