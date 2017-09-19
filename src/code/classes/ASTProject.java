@@ -69,6 +69,9 @@ public class ASTProject {
 	public int getIndexInTraversalMatrix(ASTEntity method) {
 		return allMethodsIds.get(method);
 	}
+	public ArrayList<ASTEntity> getMethods() {
+		return allMethods;
+	}
 	/**
 	 * <h1>getCalledMethodsBy</h1>
 	 * Identifies class fields as variables before calling {@link #getStatementCalls} for each statement in the method's
@@ -130,9 +133,9 @@ public class ASTProject {
 				if(posQ!=-1 && posQ<idxEquals)
 					idxEquals = -1;
 			}
-			if(idxEquals!=-1 && statement.charAt(idxEquals-1)=='!')
+			if(idxEquals>0 && statement.charAt(idxEquals-1)=='!')
 				idxEquals = -1;
-			if(idxEquals!=-1 && idxEquals<statement.length()-1 && statement.charAt(idxEquals+1)=='=')
+			if(idxEquals<statement.length()-1 && idxEquals<statement.length()-1 && statement.charAt(idxEquals+1)=='=')
 				idxEquals = -1;
 			if(idxEquals!=-1) {
 				String LHStext = statement.substring(0, idxEquals).trim();

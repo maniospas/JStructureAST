@@ -3,6 +3,14 @@ package code.classes;
 import java.util.ArrayList;
 
 public class CodeManipulation {
+	public static int min(int idx1, int idx2) {
+		if(idx1==-1)
+			return idx2;
+		if(idx2==-1)
+			return idx1;
+		return Math.min(idx1, idx2);
+	}
+	
 	public static int topLevelIndexOf(String text, String str, int startingPosition) {
 		char first = str.charAt(0);
 		int pos = startingPosition-1;
