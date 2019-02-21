@@ -110,7 +110,7 @@ public class ASTEntityBuilder {//don't serialize AST information
 			int endPosition = startPosition + ((MethodDeclaration) node).getLength();
 			String name = ((MethodDeclaration) node).getName().toString();
 			String implementation = targetObject.getContent().substring(startPosition, endPosition);
-			String unparemetrizedImplementation = implementation.replaceAll("\\/\\*.*\\*\\/", "").replaceAll("(\\<.*\\>)", "").replaceAll("\n", " ").replaceAll("\\s+", " ");
+			String unparemetrizedImplementation = CodeManipulation.removeComments(implementation).replaceAll("(\\<.*\\>)", "").replaceAll("\n", " ").replaceAll("\\s+", " ");
 			int typeDeclarationEnd = unparemetrizedImplementation.indexOf(" "+name);
 			String returnType = typeDeclarationEnd==-1?"constructor":unparemetrizedImplementation.substring(0,typeDeclarationEnd);
 			String[] returnTypes = returnType.split("\\s+");

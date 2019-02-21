@@ -24,13 +24,18 @@ public class ClassObject implements Serializable {
 	 */
 	public ClassObject(String path) throws Exception {
 		StringBuilder contentBuilder = new StringBuilder();
-		try(BufferedReader br = new BufferedReader(new FileReader(path))) {
+		try {
+			BufferedReader br = new BufferedReader(new FileReader(path));
 		    String line = br.readLine();
 		    while (line != null) {
 		    	contentBuilder.append(line);
 		    	contentBuilder.append(System.lineSeparator());
 		        line = br.readLine();
 		    }
+		    br.close();
+		}
+		catch(Exception e){
+			e.printStackTrace();
 		}
 		
 		contribution = (new File(path)).getName();

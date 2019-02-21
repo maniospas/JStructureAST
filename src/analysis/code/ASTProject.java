@@ -2,7 +2,9 @@ package analysis.code;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.Collections;
 
 /**
  * <h1>ASTProject</h1>
@@ -15,10 +17,24 @@ public class ASTProject {
 	private HashMap<String, ASTEntity> projectClasses = new HashMap<String, ASTEntity>();
 	private ArrayList<ASTEntity> allMethods = new ArrayList<ASTEntity>();
 	private HashMap<ASTEntity, Integer> allMethodsIds = new  HashMap<ASTEntity, Integer>();
+	private String path;
 	
 	public ASTProject(String projectPath) {
+		path=projectPath;
 		importPath(projectPath);
 		updateProject();
+	}
+	public String getPath() {
+		return path;
+	}
+	public ArrayList<ASTEntity> getAllMethods() {
+		
+		return allMethods;
+	}
+	
+	public HashMap<ASTEntity,Integer> getAllMethodsIds(){
+		
+		return allMethodsIds;
 	}
 	/**
 	 * <h1>updateProject</h1>
@@ -32,11 +48,16 @@ public class ASTProject {
 		allMethods.clear();
 		for(ASTEntity projectClass : projectClasses.values()) {
 			for(Node method : projectClass.collapse()) 
-			if(((ASTEntity)method).isMethod()){
+			if(((ASTEntity)method).isMethod() && !allMethodsIds.containsKey((ASTEntity)method)){  //tropopoiisi sunthikis
+				
 				allMethodsIds.put((ASTEntity)method, allMethods.size());
 				allMethods.add((ASTEntity)method);
+			}else if(((ASTEntity)method).isMethod()) {
+//				System.out.println("SOS: "+((ASTEntity)method)+" / "+allMethodsIds.get(((ASTEntity)method)));
 			}
 		}
+//		System.out.println("All Methods Ids SIZE: "+allMethodsIds.size());
+//		System.out.println("All Methods SIZE: "+allMethods.size());
 	}
 	
 	public ASTEntity searchForMethod(String methodName) {
@@ -198,7 +219,8 @@ public class ASTProject {
 		else if(callText.startsWith("new ")) {//constructors
 			int idx = callText.indexOf("(");
 			int nArgs = CodeManipulation.topLevelCountOf(callText, ',', idx+1)+1;
-			if(callText.substring(idx+1, CodeManipulation.topLevelIndexOf(callText,')', idx)).trim().isEmpty())
+			int last = CodeManipulation.topLevelIndexOf(callText,')', idx+1);
+			if(idx<0 || last>=callText.length()-1 || last<0|| callText.substring(idx+1, last).trim().isEmpty())
 				nArgs = 0;
 			String className = callText.substring(4, idx).trim();
 			parentEntity = projectClasses.get(className);
@@ -366,15 +388,17 @@ public class ASTProject {
 	public void importPath(String path) {
 	    File directory = new File(path);
 	    File[] fList = directory.listFiles();
-	    for (File file : fList) {
-	        if (file.isFile()) {
-	        	if(file.getPath().endsWith(".java"))
-	        		importFile(file.getPath());
-	        } 
-	        else if (file.isDirectory()) {
-	        	importPath(file.getPath());
-	        }
-	    }
+	    if(fList!=null)
+		    for (File file : fList) {
+		        if (file.isFile()) {
+		        	//System.out.println(file.getName());
+		        	if(file.getPath().endsWith(".java"))
+		        		importFile(file.getPath());
+		        } 
+		        else if (file.isDirectory()) {
+		        	importPath(file.getPath());
+		        }
+		    }
 	}
 	/**
 	 * <h1>importFile</h1>
@@ -407,4 +431,59 @@ public class ASTProject {
 			if(((ASTEntity)entity).isClass())
 				projectClasses.put(entity.getStackTrace(), (ASTEntity)entity);
 	}
+	
+	public void generateCropTraversalMatrix() {
+		
+		int N = allMethods.size(); 
+		for(int i=0;i<N;i++) {
+			ASTEntity entity=allMethods.get(i);
+				System.out.println("Matched: "+i+" / "+allMethodsIds.get(entity)+"  "+entity.isMethod());
+				
+			
+		}
+	}
+	public double[][] generateTraversalMatrixWithoutRoot(ASTEntity root){
+		double [][] mat=generateTraversalMatrix();
+		for(int i=0;i<mat[0].length;i++) {
+			mat[i][allMethodsIds.get(root)]=0;
+		}
+		return mat;
+	}
+	/*
+		public void generateCroppedTraversalMatrix(ASTEntity ast) {
+		ArrayList<Integer> list1=new ArrayList<Integer>();
+		ArrayList<Integer> list2=new ArrayList<Integer>();
+		ArrayList<Integer> testlist= new ArrayList<Integer>();
+		int N = allMethods.size(); 
+		double[][] M = new double[N][N];
+		M=this.generateTraversalMatrix();
+		int number=allMethodsIds.get(ast);
+		list2.add(number);
+		do {
+			number=list2.get(0);
+			System.out.println(number);
+		for(int i=0;i<N;i++) {
+			if((M[number][i]==1)&&(!list1.contains(i))&&(!list2.contains(i))) {
+				list2.add(i);
+				System.out.println("OK");
+			}
+		}
+		System.out.println("LIST2: "+list2);
+		list1.add(number);
+		list2.remove(0);
+		System.out.println(list2.size());
+				}while(!list2.isEmpty());
+		System.out.println("LIST1: "+list1);
+		Collections.sort(list1);
+		System.out.println("LIST1 SORTED: "+list1);
+		double [][] CroppedM=new double[list1.size()][list1.size()];
+		for(int i=0;i<list1.size();i++)
+			for(int j=0;j<list1.size();j++) {
+				CroppedM[i][j]=M[list1.get(i)][list1.get(j)];
+			}
+		System.out.println(Arrays.deepToString(CroppedM));
+	}
+	*/
+	
+	
 }

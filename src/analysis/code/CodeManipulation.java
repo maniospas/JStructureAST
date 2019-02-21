@@ -1,6 +1,7 @@
 package analysis.code;
 
 import java.util.ArrayList;
+import java.util.regex.Pattern;
 
 public class CodeManipulation {
 	public static int min(int idx1, int idx2) {
@@ -12,10 +13,13 @@ public class CodeManipulation {
 	}
 	
 	public static String removeComments(String code) {
-		  String partialFiltered = code.replaceAll("/\\*.*\\*/", "");
-		  String fullFiltered = partialFiltered.replaceAll("//.*(?=\\n)", "");
-		  return fullFiltered;
+		try {
+		  return code.replaceAll("(?:/\\*(?:[^*]|(?:\\*+[^*/]))*\\*+/)|(?://.*)", "");
 		}
+		catch(StackOverflowError e) {
+			return code;
+		}
+	}
 	
 	public static int topLevelIndexOf(String text, String str, int startingPosition) {
 		char first = str.charAt(0);
